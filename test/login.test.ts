@@ -101,6 +101,18 @@ const ADD = `mcp add -s user cheapag -- ${process.execPath} ${serverEntry}`;
 /** The plugin steps on a machine without it (ticket 31). */
 const PLUGIN = (marketplace: string) => ["plugin marketplace list", "plugin list", `plugin marketplace add ${marketplace}`, "plugin install cheapag@cheapag"];
 
+tty("BigModel login prompts without echoing the key and saves a private credential", async () => {
+  const r = await runLogin({
+    claude: "absent", args: ["--provider", "bigmodel", "--model", "glm-5.3"],
+    steps: [{ expect: "BigModelAPIKey", send: `${KEY}\r` }],
+  });
+  expect(r.exit).toBe("EXIT 0");
+  expect(r.output).not.toContain(KEY);
+  expect(r.config.worker_provider).toBe("bigmodel");
+  const credential = join(dirname(r.launcher), "..", "bigmodel.key");
+  expect(readFileSync(credential, "utf8")).toBe(KEY);
+}, slow(90_000));
+
 tty("login saves the key through the bundled OpenCode, live-checks it, and registers at user scope on yes", async () => {
   const r = await runLogin({ claude: "unregistered", register: "y" });
   expect(r.exit).toBe("EXIT 0");

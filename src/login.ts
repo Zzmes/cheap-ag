@@ -185,9 +185,11 @@ async function loginBigmodel(model: string, out: (line?: string) => void, intera
   if (!key && process.stdin.isTTY) {
     const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
     const rl = createInterface({ input: process.stdin, output: muted, terminal: true });
-    rl.on("SIGINT", () => rl.close());
+    const cancel = new AbortController();
+    rl.on("SIGINT", () => cancel.abort());
+    rl.on("close", () => cancel.abort());
     process.stdout.write("BigModel API Key (hidden): ");
-    try { key = (await rl.question("")).trim(); }
+    try { key = (await rl.question("", { signal: cancel.signal })).trim(); }
     catch { return 1; }
     finally { rl.close(); process.stdout.write("\n"); }
   }

@@ -193,26 +193,16 @@ test("context: neither Codex signal keeps the byte-identical Claude one-liner", 
   expect(out.hookSpecificOutput.additionalContext).toBe(SESSION_CONTEXT);
 });
 
-test("context: a newer minor or major version adds a yellow systemMessage and tells Claude to prompt the update", () => {
+test("context: the GLM fork never recommends installing the upstream npm package", () => {
   const [major, minor] = version.split(".").map(Number);
-  for (const latest of [`${major}.${minor + 1}.0`, `${major + 1}.0.0`]) {
-    const out = contextOut({ checked: Date.now(), latest }, { CLAUDE_CODE_ENTRYPOINT: "cli" });
-    expect(out.systemMessage).toBe(`\x1b[33mCheap Agent ${latest} is available (you have ${version}). Update: npx cheap-agent@latest\x1b[39m`);
-    expect(out.hookSpecificOutput.hookEventName).toBe("SessionStart");
-    expect(out.hookSpecificOutput.additionalContext).toContain(latest);
-    expect(out.hookSpecificOutput.additionalContext).toContain("npx cheap-agent@latest");
-    expect(out.hookSpecificOutput.additionalContext).toContain(`${SESSION_CONTEXT} Cheap Agent ${latest} `);
+  for (const host of ["cli", "claude-desktop"]) {
+    for (const latest of [`${major}.${minor + 1}.0`, `${major + 1}.0.0`]) {
+      const out = contextOut({ checked: Date.now(), latest }, { CLAUDE_CODE_ENTRYPOINT: host });
+      expect(out.systemMessage).toBeUndefined();
+      expect(out.hookSpecificOutput.hookEventName).toBe("SessionStart");
+      expect(out.hookSpecificOutput.additionalContext).toBe(SESSION_CONTEXT);
+    }
   }
-});
-
-test("context: in the desktop app the systemMessage has no colour but Claude is still told about the update", () => {
-  const [major, minor] = version.split(".").map(Number);
-  const latest = `${major}.${minor + 1}.0`;
-  const out = contextOut({ checked: Date.now(), latest }, { CLAUDE_CODE_ENTRYPOINT: "claude-desktop" });
-  expect(out.systemMessage).not.toContain("\x1b[");
-  expect(out.systemMessage).toBe(`Cheap Agent ${latest} is available (you have ${version}). Update: npx cheap-agent@latest`);
-  expect(out.hookSpecificOutput.additionalContext).toContain(latest);
-  expect(out.hookSpecificOutput.additionalContext).toContain("npx cheap-agent@latest");
 });
 
 test("context: a newer patch alone does not notify", () => {

@@ -84,7 +84,10 @@ test("a selected BigModel provider fails clearly when its key is missing", async
 test("BigModel uses the normal per-repository consent gate", () => {
   const dir = mkdtempSync(join(tmpdir(), "cheapag-bigmodel-consent-"));
   onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
-  expect(consentGate(dir, "bigmodel")).toHaveProperty("block");
+  const consent = consentGate(dir, "bigmodel");
+  expect(consent).toHaveProperty("block");
+  expect("block" in consent && consent.block).toContain("$cheapag:allow (Codex)");
+  expect("block" in consent && consent.block).not.toContain("npx cheap-agent allow");
   writeConsent(dir, { mode: "all", provider: "bigmodel", approvedAt: new Date().toISOString() });
   const approved = consentGate(dir, "bigmodel");
   expect("route" in approved && approved.route.implement).toEqual({ providerID: "bigmodel", id: "glm-5.3-flash" });

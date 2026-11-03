@@ -16,7 +16,7 @@ export const PROVIDERS = [
 export type Provider = { provider: (typeof PROVIDERS)[number]["id"]; via: "login" | "env" };
 export const BIGMODEL_KEY_ENV = "BIGMODEL_API_KEY";
 
-export const LOGIN_COMMAND = "npx cheap-agent login";
+export const LOGIN_COMMAND = "cheapag login";
 export const NO_PROVIDER = `FAIL reason: no worker provider; run ${LOGIN_COMMAND}`;
 
 /** OpenCode keeps logins for every installed copy in one shared file. */

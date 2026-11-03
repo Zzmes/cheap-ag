@@ -66,7 +66,10 @@ export function writePlugin(entry: string, _node: string, platform: NodeJS.Platf
   cpSync(PLUGIN_SRC, plugin, { recursive: true });
   rmSync(join(plugin, ".mcp.json"), { force: true });
   const skills = readdirSync(join(plugin, "skills")).map((s) => join(plugin, "skills", s, "SKILL.md"));
-  for (const f of skills) writeFileSync(f, readFileSync(f, "utf8").replaceAll(NPX, ref));
+  for (const f of skills) writeFileSync(f, readFileSync(f, "utf8")
+    .replaceAll(NPX, ref)
+    .replaceAll("Bash(cheapag ", `Bash(${ref} `)
+    .replaceAll("!`cheapag ", `!\`${ref} `));
   const hooksFile = join(plugin, "hooks", "hooks.json");
   if (platform === "win32") {
     // rewrite the commands as JSON: a raw replace would put unescaped double quotes inside the strings; no sh prefix, since the launcher gates and exits 0
@@ -77,7 +80,7 @@ export function writePlugin(entry: string, _node: string, platform: NodeJS.Platf
     json.hooks.SessionStart[0].hooks[0].command = command("context");
     writeFileSync(hooksFile, JSON.stringify(json, null, 2) + "\n");
   } else {
-    writeFileSync(hooksFile, readFileSync(hooksFile, "utf8").replaceAll(NPX, ref));
+    writeFileSync(hooksFile, readFileSync(hooksFile, "utf8").replaceAll(NPX, ref).replaceAll("cheapag hook", `${ref} hook`));
   }
   mkdirSync(join(marketplace, ".claude-plugin"), { recursive: true });
   writeFileSync(join(marketplace, ".claude-plugin", "marketplace.json"), JSON.stringify({

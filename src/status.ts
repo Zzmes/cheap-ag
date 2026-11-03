@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { describe, presetHere, readConsent, routeMoved } from "./consent.js";
+import { ALLOW_HINT, describe, presetHere, readConsent, routeMoved } from "./consent.js";
 import { detectProvider, LOGIN_COMMAND, providerLabel, redact } from "./credentials.js";
 import { blockedFor, records } from "./jobs.js";
 import { isAlive } from "./platform.js";
@@ -34,9 +34,9 @@ export function status(args: string[]): number {
   }
   if (root) {
     const consent = readConsent(root);
-    out(`consent: ${!consent ? "not given; run /cheapag:allow"
-      : consent.provider !== provider ? `given for ${providerLabel(consent.provider)}, not the current provider; run /cheapag:allow`
-      : routeMoved(root, consent) ? "given for other worker models (preset or models changed); run /cheapag:allow"
+    out(`consent: ${!consent ? `not given; ${ALLOW_HINT}`
+      : consent.provider !== provider ? `given for ${providerLabel(consent.provider)}, not the current provider; ${ALLOW_HINT}`
+      : routeMoved(root, consent) ? `given for other worker models (preset or models changed); ${ALLOW_HINT}`
       : `${describe(consent)} (since ${consent.approvedAt.slice(0, 10)})`}`);
     const all = records(root).sort((a, b) => String(b.timing?.startedAt ?? "").localeCompare(String(a.timing?.startedAt ?? "")));
     const inFlight = (r: (typeof all)[number]) => r.status === "RUNNING" || r.status === "BLOCKED";

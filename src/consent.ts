@@ -12,6 +12,7 @@ import { projectRoot } from "./workspace.js";
  */
 
 export type ConsentMode = "all" | "zdr-only" | "models";
+export const ALLOW_HINT = "run $cheapag:allow in Codex, /cheapag:allow in Claude Code, or cheapag allow in a terminal";
 /** `route`: the models the CONSENT block listed when all or zero-retention was given; a preset or `models` change that alters it asks again. */
 export type Consent = { mode: ConsentMode; provider: Provider["provider"]; models?: string[]; route?: string[]; approvedAt: string };
 
@@ -92,7 +93,7 @@ export function consentGate(root: string, provider: Provider["provider"]): { blo
   const zdr = consent.mode === "zdr-only" && provider === "openrouter";
   const pick = (ms: (WorkerModel | undefined)[]) => ms.filter((m): m is WorkerModel => !!m && allowed(provider, consent, m)).map((m) => (zdr ? withZdr(m) : m));
   const [implement, ...fallbacks] = pick([full.implement, ...full.fallbacks, full.escalation]);
-  if (!implement) return { block: failBlock(`no allowed model for ${providerLabel(provider)} under this repo's consent (${describe(consent)}); ask the user to widen it with /cheapag:allow`) };
+  if (!implement) return { block: failBlock(`no allowed model for ${providerLabel(provider)} under this repo's consent (${describe(consent)}); ask the user to ${ALLOW_HINT} with broader access`) };
   const [escalation] = pick([full.escalation]);
   const others = (m: WorkerModel) => modelName(m) !== modelName(implement) && modelName(m) !== modelName(escalation ?? implement);
   // research with nothing of its own allowed runs on the implement chain
@@ -137,6 +138,6 @@ function consentBlock(root: string, provider: Provider["provider"], full: Route)
     repo: basename(root),
     send: `code from this repo → ${providerLabel(provider)}: ${ids}`,
     retention: retentionLine,
-    approve: "ask the user to run /cheapag:allow in Claude Code, or npx cheap-agent allow in a terminal (Codex); add --zdr-only to limit it to zero-retention models, or --models a,b; never approve yourself",
+    approve: "ask user to run $cheapag:allow (Codex), /cheapag:allow (Claude), or cheapag allow (terminal); --zdr-only limits retention, --models a,b limits models; never approve yourself",
   });
 }

@@ -263,7 +263,7 @@ tty("npx cheap-agent with a saved provider updates without asking and registers 
   expect(r.output).toContain("✓ Updated the cheapag plugin to ");
   expect(r.output).not.toContain("Added the cheapag plugin");
   expect(r.output).not.toContain("run /cheapag:allow");
-  expect(r.output).toContain("Restart Claude Code to load it. To change provider or models: npx cheap-agent login");
+  expect(r.output).toContain("Restart Claude Code to load it. To change provider or models: cheapag login");
   expect(r.claudeCalls).toEqual(["mcp get cheapag", ...PLUGIN(r.marketplace)]);
 }, slow(90_000));
 
@@ -282,14 +282,14 @@ tty("without the claude CLI, login prints the command to run", async () => {
 tty("a failed live check explains the fix, keeps the saved login, and does not offer registration", async () => {
   const r = await runLogin({ claude: "unregistered", check: [{ error: { name: "APIError", message: "401 Missing Authentication header" } }] });
   expect(r.exit).toBe("EXIT 1");
-  expect(r.output).toContain("✗ the key was rejected (401 Missing Authentication header); run npx cheap-agent login again with the right key");
+  expect(r.output).toContain("✗ the key was rejected (401 Missing Authentication header); run cheapag login again with the right key");
   expect(r.saved).toEqual(["openrouter"]);
   expect(r.claudeCalls).toEqual([]);
 }, slow(90_000));
 
 tty.each([
-  ["no credit", "402 Insufficient credits", "✗ the account has no credit (402 Insufficient credits); top it up, then run npx cheap-agent login again"],
-  ["an unavailable model", "404 No endpoints found for deepseek/deepseek-v4.1-flash", "✗ openrouter/deepseek/deepseek-v4.1-flash is unavailable to this account (404 No endpoints found for deepseek/deepseek-v4.1-flash); run npx cheap-agent login and pick another provider"],
+  ["no credit", "402 Insufficient credits", "✗ the account has no credit (402 Insufficient credits); top it up, then run cheapag login again"],
+  ["an unavailable model", "404 No endpoints found for deepseek/deepseek-v4.1-flash", "✗ openrouter/deepseek/deepseek-v4.1-flash is unavailable to this account (404 No endpoints found for deepseek/deepseek-v4.1-flash); run cheapag login and pick another provider"],
 ] as const)("a live check failing on %s says why and what to do", async (_, message, expected) => {
   const r = await runLogin({ claude: "unregistered", check: [{ error: { name: "APIError", message } }] });
   expect(r.exit).toBe("EXIT 1");
@@ -308,7 +308,7 @@ test("login refuses a non-interactive stdin instead of hanging", async () => {
   const { env } = hermeticHome();
   const r = await promisify(execFile)(process.execPath, [serverEntry, "login"], { env, encoding: "utf8" }).catch((e) => e);
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("✗ npx cheap-agent login needs an interactive terminal (the key is typed into a hidden prompt)\n");
+  expect(r.stdout).toBe("✗ cheapag login needs an interactive terminal (the key is typed into a hidden prompt)\n");
 });
 
 tty("re-running login adds a provider; the earlier one keeps precedence and that is said", async () => {

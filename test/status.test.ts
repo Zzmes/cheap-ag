@@ -78,12 +78,12 @@ test("cheapag status says consent no longer covers the models after a preset cha
   allowRepo(repo.dir, env);
   expect(status().split("\n")[1]).toMatch(/^consent: all models \(since /);
   writeFileSync(join(repo.dir, "cheapag.json"), JSON.stringify({ models: PRESETS["opencode-go"].strongest }));
-  expect(status().split("\n")[1]).toBe("consent: given for other worker models (preset or models changed); run /cheapag:allow");
+  expect(status().split("\n")[1]).toBe("consent: given for other worker models (preset or models changed); run $cheapag:allow in Codex, /cheapag:allow in Claude Code, or cheapag allow in a terminal");
 });
 
 test("cheapag status with no login, no jobs and no spend; outside a repository; bad arguments", () => {
   const { repo, env, status } = setup();
-  expect(status()).toBe(`cheapag ${version} provider=none (run npx cheap-agent login)\nconsent: not given; run /cheapag:allow\nrunning: none\nrecent: none\nspend: none tracked in the last 30 days\n`);
+  expect(status()).toBe(`cheapag ${version} provider=none (run cheapag login)\nconsent: not given; run $cheapag:allow in Codex, /cheapag:allow in Claude Code, or cheapag allow in a terminal\nrunning: none\nrecent: none\nspend: none tracked in the last 30 days\n`);
   const outside = join(repo.dir, ".git"); // inside .git, rev-parse --show-toplevel fails
   expect(status(outside)).toContain("repo: not a git repository (no jobs or consent here)\nspend: none");
   const r = spawnSync(process.execPath, [serverEntry, "status", "--x"], { cwd: repo.dir, env, encoding: "utf8" });

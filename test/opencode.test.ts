@@ -68,7 +68,7 @@ test.each([
   ["env keys without a login are ignored", {}, null],
 ] as const)("credentials from saved logins only: %s", async (_, logins, expected) => {
   const text = await pingWith({ OPENCODE_GO_API_KEY: "g", OPENROUTER_API_KEY: "o", DEEPSEEK_API_KEY: "d", CHEAPAG_OPENCODE_URL: await fakeHealth(PIN) }, logins);
-  expect(text).toBe(expected ? `OK cheapag ${pkg.version} opencode=${PIN} ${expected}` : "FAIL reason: no worker provider; run npx cheap-agent login");
+  expect(text).toBe(expected ? `OK cheapag ${pkg.version} opencode=${PIN} ${expected}` : "FAIL reason: no worker provider; run cheapag login");
 });
 
 test("ping names the preset the user's config picks, or custom when it matches none", async () => {

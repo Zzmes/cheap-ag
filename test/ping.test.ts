@@ -55,7 +55,7 @@ test("delegate and research load upfront in Claude Code, with descriptions that 
 
 test("ping with no worker credentials fails with setup instructions", async () => {
   expect(await callText(server.client, "ping")).toBe(
-    "FAIL reason: no worker provider; run npx cheap-agent login",
+    "FAIL reason: no worker provider; run cheapag login",
   );
 });
 

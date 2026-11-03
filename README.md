@@ -37,6 +37,44 @@ Works in Claude Code and Codex. One login covers both.
 
 This checkout supports the direct BigModel OpenAI-compatible API at `https://open.bigmodel.cn/api/paas/v4`. Use a **standard API / resource-pack key**, not a Coding Plan key. Until this patch is published, run the local build rather than `npx cheap-agent@1.3.2`.
 
+#### Ubuntu / zsh: use the fork as a Codex plugin
+
+From a checkout of `Zzmes/cheap-ag` on branch `feat/bigmodel-worker` at `~/mcp/cheap-ag`, run this once:
+
+```zsh
+npm ci --ignore-scripts
+npm run build
+npm link
+cheapag login --provider bigmodel --model glm-5.3
+```
+
+`npm link` makes `cheapag` run this checkout's build; it must be on the `PATH` used to start Codex. Check with `command -v cheapag`. Set `BIGMODEL_API_KEY` in the environment before login or starting Codex. The key is never stored in this repository. To load it automatically in new zsh terminals, save it in a user-only local file from the terminal where it is already set:
+
+```zsh
+umask 077
+printf '%s' "$BIGMODEL_API_KEY" > ~/.config/cheapag/bigmodel.key
+chmod 600 ~/.config/cheapag/bigmodel.key
+printf '%s\n' 'export BIGMODEL_API_KEY="$(cat "$HOME/.config/cheapag/bigmodel.key")"' >> ~/.zshrc
+```
+
+The file contains the key, so keep it private and outside any repository. Open a new terminal before starting Codex. If the official plugin or a manual `cheapag` MCP entry is installed, remove those first to avoid two servers with the same name:
+
+```zsh
+codex plugin remove cheapag@cheap-agent
+codex mcp remove cheapag
+```
+
+Missing-entry errors are harmless. Install the fork's plugin from its branch, then start Codex in a project:
+
+```zsh
+codex plugin marketplace add Zzmes/cheap-ag --ref feat/bigmodel-worker
+codex plugin add cheapag@cheap-agent-glm
+cd ~/path/to/project
+codex
+```
+
+Trust the Cheap Agent hooks when prompted. In each project, run `$cheapag:allow` once **inside Codex**. After that, ask Codex for changes normally. The plugin's MCP server, skills and hooks all run the linked local `cheapag` binary. `ping` checks that Cheap Agent and OpenCode start; an actual GLM task is needed to confirm the BigModel API accepts the key and model.
+
 On Windows PowerShell, set `BIGMODEL_API_KEY` for your user without putting the key in a command, repo file, or shell history:
 
 ```powershell

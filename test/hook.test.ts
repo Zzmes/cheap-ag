@@ -13,8 +13,8 @@ import { hermeticHome, serverEntry, slow, tempRepo } from "./harness.js";
 const repoDir = join(import.meta.dirname, "..");
 const { version } = JSON.parse(readFileSync(join(repoDir, "package.json"), "utf8"));
 const hooks = JSON.parse(readFileSync(join(repoDir, "plugin", "hooks", "hooks.json"), "utf8"));
-const command = (hooks.hooks.PreToolUse[0].hooks[0].command as string).replace(`npx -y cheap-agent@${version}`, `"${process.execPath}" "${serverEntry}"`);
-const resultCommand = (hooks.hooks.PostToolUse[0].hooks[0].command as string).replace(`npx -y cheap-agent@${version}`, `"${process.execPath}" "${serverEntry}"`);
+const command = (hooks.hooks.PreToolUse[0].hooks[0].command as string).replace("cheapag hook guard", `"${process.execPath}" "${serverEntry}" hook guard`);
+const resultCommand = (hooks.hooks.PostToolUse[0].hooks[0].command as string).replace("cheapag hook result", `"${process.execPath}" "${serverEntry}" hook result`);
 const lines = (n: number, tag = "x") => Array.from({ length: n }, (_, i) => `${tag}${i}`).join("\n") + "\n";
 /** A Codex apply_patch: sections are `*** Update File:`/`*** Add File:`/`*** Delete File:` with their hunks. */
 const applyPatch = (...sections: string[]) => ["*** Begin Patch", ...sections, "*** End Patch"].join("\n") + "\n";

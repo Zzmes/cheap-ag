@@ -32,7 +32,7 @@ test("codex host gets Codex instructions, no Claude-only rules, same server name
   try {
     expect(codex.client.getServerVersion()).toMatchObject({ name: "cheapag", version });
     const instructions = codex.client.getInstructions()!;
-    expect(instructions).toContain("npx cheap-agent allow");
+    expect(instructions).toContain("$cheapag:allow");
     expect(instructions).toContain("do the task yourself");
     expect(instructions).toContain("seconds=15");
     expect(instructions).toContain("- bullets");

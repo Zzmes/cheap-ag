@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "cheapag": {
-      "command": "npx",
-      "args": ["-y", "cheap-agent@1.3.2", "codex"],
+      "command": "cheapag",
+      "args": ["codex"],
+      "env_vars": ["BIGMODEL_API_KEY"],
       "omit_tools_from": ["code_mode", "deferred"]
     }
   }

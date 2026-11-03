@@ -37,7 +37,7 @@ Works in Claude Code and Codex. One login covers both.
 
 This checkout supports the direct BigModel OpenAI-compatible API at `https://open.bigmodel.cn/api/paas/v4`. Use a **standard API / resource-pack key**, not a Coding Plan key. Until this patch is published, run the local build rather than `npx cheap-agent@1.3.2`.
 
-#### Ubuntu / zsh: use the fork as a Codex plugin
+#### Ubuntu / Bash or zsh: use the fork as a Codex plugin
 
 From a checkout of `Zzmes/cheap-ag` on branch `feat/bigmodel-worker` at `~/mcp/cheap-ag`, run this once:
 
@@ -63,7 +63,7 @@ chmod 600 ~/.config/cheapag/bigmodel.key
 printf '%s\n' 'export BIGMODEL_API_KEY="$(cat "$HOME/.config/cheapag/bigmodel.key")"' >> ~/.zshrc
 ```
 
-The file contains the key, so keep it private and outside any repository. Open a new terminal before starting Codex. If the official plugin or a manual `cheapag` MCP entry is installed, remove those first to avoid two servers with the same name:
+The file contains the key, so keep it private and outside any repository. The manual snippet above uses zsh; on Bash, change `~/.zshrc` to `~/.bashrc`. Open a new terminal before starting Codex. If the official plugin or a manual `cheapag` MCP entry is installed, remove those first to avoid two servers with the same name:
 
 ```zsh
 codex plugin remove cheapag@cheap-agent

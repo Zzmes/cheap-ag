@@ -34,9 +34,13 @@ umask 077
 mkdir -p -- "$(dirname -- "$key_file")"
 printf '%s' "$BIGMODEL_API_KEY" > "$key_file"
 chmod 600 "$key_file"
-zshrc="$HOME/.zshrc"
-if [[ ! -f $zshrc ]] || ! grep -Eq '^export BIGMODEL_API_KEY=.*bigmodel\.key' "$zshrc"; then
-  printf '%s\n' 'export BIGMODEL_API_KEY="$(cat "$HOME/.config/cheapag/bigmodel.key")"' >> "$zshrc"
+case "${SHELL##*/}" in
+  bash) shell_rc="$HOME/.bashrc" ;;
+  zsh) shell_rc="$HOME/.zshrc" ;;
+  *) printf 'Use Bash or zsh for automatic key loading.\n' >&2; exit 1 ;;
+esac
+if [[ ! -f $shell_rc ]] || ! grep -Eq '^export BIGMODEL_API_KEY=.*bigmodel\.key' "$shell_rc"; then
+  printf '%s\n' 'export BIGMODEL_API_KEY="$(cat "$HOME/.config/cheapag/bigmodel.key")"' >> "$shell_rc"
 fi
 
 npm ci --ignore-scripts

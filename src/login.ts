@@ -4,8 +4,10 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { createInterface } from "node:readline/promises";
+import { NPX_ARGS } from "./distribution.js";
+import { Writable } from "node:stream";
 import { loadConfig, userConfigFile } from "./config.js";
-import { BIGMODEL_KEY_ENV, detectProvider, LOGIN_COMMAND as LOGIN, PROVIDERS, providerLabel as label, redact, savedProviders, type Provider } from "./credentials.js";
+import { BIGMODEL_KEY_ENV, bigmodelKeyFile, readBigmodelKey, saveBigmodelKey, detectProvider, LOGIN_COMMAND as LOGIN, PROVIDERS, providerLabel as label, redact, savedProviders, type Provider } from "./credentials.js";
 import { ensureOpencode, opencodeBinary, stopOpencode } from "./opencode.js";
 import { runCli } from "./platform.js";
 import { installPlugin, stableNode } from "./install.js";
@@ -14,7 +16,7 @@ import { runSession } from "./worker.js";
 
 /**
  * `cheapag login`: the setup (ADR-0004). Existing providers use OpenCode's hidden key prompt and auth store;
- * BigModel reads BIGMODEL_API_KEY from the environment. Interactive login live-checks the selected provider and offers to register
+ * BigModel uses a hidden key prompt and a private user credential file. Interactive login live-checks the selected provider and offers to register
  * the server with Claude Code at user scope and install the plugin (ticket 31). `npx cheap-agent` in a terminal runs it too.
  */
 
@@ -179,12 +181,23 @@ async function loginBigmodel(model: string, out: (line?: string) => void, intera
     out(`✗ invalid BigModel model ID; use letters, digits, dots, underscores or hyphens`);
     return 1;
   }
-  if (!process.env[BIGMODEL_KEY_ENV]?.trim()) {
+  let key = readBigmodelKey();
+  if (!key && process.stdin.isTTY) {
+    const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
+    const rl = createInterface({ input: process.stdin, output: muted, terminal: true });
+    rl.on("SIGINT", () => rl.close());
+    process.stdout.write("BigModel API Key (hidden): ");
+    try { key = (await rl.question("")).trim(); }
+    catch { return 1; }
+    finally { rl.close(); process.stdout.write("\n"); }
+  }
+  if (!key) {
     out(`✗ ${BIGMODEL_KEY_ENV} is not set; set it in this terminal, then run ${LOGIN} --provider bigmodel --model ${model}`);
     return 1;
   }
   const file = userConfigFile();
   try {
+    saveBigmodelKey(key);
     const selected = `bigmodel/${model}`;
     const config = { ...readUser(), worker_provider: "bigmodel", models: { implement: selected, research: selected, escalation: selected, fallback: [] } };
     mkdirSync(dirname(file), { recursive: true });
@@ -193,7 +206,7 @@ async function loginBigmodel(model: string, out: (line?: string) => void, intera
     out(`✗ ${file}: ${(err as Error).message}; BigModel not selected`);
     return 1;
   }
-  out(`✓ Worker provider: Zhipu BigModel (direct API); model ${model}, saved in ${file}; key read from ${BIGMODEL_KEY_ENV}`);
+  out(`✓ Worker provider: Zhipu BigModel (direct API); model ${model}, saved in ${file}; key saved privately in ${bigmodelKeyFile()}`);
   if (!interactive) return 0;
   const check = await liveCheck({ provider: "bigmodel", via: "env" });
   out(check.ok ? `✓ ${check.line}` : `✗ ${check.line}`);
@@ -324,7 +337,7 @@ function finish(out: (line?: string) => void, plugin: boolean) {
 /** How Claude Code should start this installed package: npx when run from npx's cache, else this exact file. */
 function serverCommand() {
   const entry = realpathSync(process.argv[1]);
-  return entry.split(sep).includes("_npx") ? ["npx", "-y", `cheap-agent@${version}`] : [stableNode(), entry];
+  return entry.split(sep).includes("_npx") ? ["npx", ...NPX_ARGS] : [stableNode(), entry];
 }
 
 // double quotes on Windows: cmd and PowerShell don't treat single quotes as quoting

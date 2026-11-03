@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch } from "node:os";
 import { dirname, join } from "node:path";
-import { BIGMODEL_KEY_ENV, type Provider } from "./credentials.js";
+import { BIGMODEL_KEY_ENV, readBigmodelKey, type Provider } from "./credentials.js";
 import { baselinePermission } from "./permissions.js";
 import { gitBash, killProcessGroup, opencodePlatform } from "./platform.js";
 import { fullRoute, modelName, routeModels, type Route } from "./routing.js";
@@ -203,9 +203,11 @@ export async function runningOpencode(): Promise<Opencode | undefined> {
 }
 
 export function ensureOpencode(provider: Provider, projectDir = process.cwd(), route?: Route): Promise<Opencode> {
-  if (provider.provider === "bigmodel" && !process.env[BIGMODEL_KEY_ENV]?.trim()) {
+  const key = provider.provider === "bigmodel" ? readBigmodelKey() : undefined;
+  if (provider.provider === "bigmodel" && !key) {
     return Promise.reject(new Error(`${BIGMODEL_KEY_ENV} is not set; set it in the environment that launches Cheap Agent (and restart Codex)`));
   }
+  if (key) process.env[BIGMODEL_KEY_ENV] = key;
   const config = opencodeConfig(provider, route ?? fullRoute(provider.provider));
   if (started && route && booted !== config) {
     // a reboot would kill every live session: refuse it while any job or research call holds the server

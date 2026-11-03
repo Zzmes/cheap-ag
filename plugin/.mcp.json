@@ -1,7 +1,12 @@
 {
   "mcpServers": {
     "cheapag": {
-      "command": "cheapag"
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker",
+        "cheapag"
+      ]
     }
   }
 }

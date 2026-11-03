@@ -29,162 +29,44 @@
   ⭐ Star it, and click <strong>Watch → Custom → Releases</strong> to hear when new versions ship.
 </p>
 
-## Install
+## Install (BigModel fork)
 
-Works in Claude Code and Codex. One login covers both.
+Uses the direct standard API / resource-pack endpoint `https://open.bigmodel.cn/api/paas/v4`, not Coding Plan. Requires Git, Node.js 20.11+ with npm, and Codex.
 
-### Zhipu BigModel standard API (source checkout)
+Run in a normal terminal, once per machine:
 
-This checkout supports the direct BigModel OpenAI-compatible API at `https://open.bigmodel.cn/api/paas/v4`. Use a **standard API / resource-pack key**, not a Coding Plan key. Until this patch is published, run the local build rather than `npx cheap-agent@1.3.2`.
+```bash
+npx -y --package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker cheapag login --provider bigmodel --model glm-5.3
+codex plugin marketplace add Zzmes/cheap-ag --ref feat/bigmodel-worker
+codex plugin add cheapag@cheap-agent-glm
+```
 
-#### Ubuntu / Bash or zsh: use the fork as a Codex plugin
+Login prompts for the key with hidden input and saves it in `~/.config/cheapag/bigmodel.key` (mode 600; respects `XDG_CONFIG_HOME`). It reuses the key saved by the previous installer. No export, shell startup edits, source checkout, manual build or `npm link` is needed. `BIGMODEL_API_KEY` overrides the saved key; login saves that value for future sessions. Use a GLM model ID accepted by your account with `--model`. Never put your key in chat, a project file or a command argument. The credential file is plain text restricted to your OS user, not an encrypted vault.
 
-From a checkout of `Zzmes/cheap-ag` on branch `feat/bigmodel-worker` at `~/mcp/cheap-ag`, run this once:
+Start `codex` in a project, trust the Cheap Agent hooks, invoke `$cheapag:allow` once for that Git repository, then ask for changes normally. Authorizing a parent repository does not authorize a separate nested repository. The plugin cannot override Codex's own permission checks. Login with explicit flags configures credentials and models without a model API request; an actual research/delegate task verifies the API.
 
-```zsh
+The plugin, hooks and skills run the fork's GitHub package. npm builds TypeScript automatically when installing the Git package. The first invocation needs network and can take longer; later invocations use npm's cache. `npx cheap-agent` still downloads the upstream npm package without this fork's changes.
+
+### Migrate the previous local installation
+
+Pull this branch in your existing checkout, then run:
+
+```bash
 bash scripts/setup-codex-bigmodel.sh
 ```
 
-It securely prompts for the key if needed, saves it in a user-only file, builds and links this checkout, removes the old `cheapag` entries, and installs the fork's plugin from this local checkout. Open a new terminal afterward. The equivalent manual steps are below.
+This reuses your key and replaces the local marketplace with a Git marketplace. Restart Codex. Existing repository consent remains subject to the selected provider and models.
 
-```zsh
-npm ci --ignore-scripts
-npm run build
-npm link
-cheapag login --provider bigmodel --model glm-5.3
-```
+### Update
 
-`npm link` makes `cheapag` run this checkout's build; it must be on the `PATH` used to start Codex. Check with `command -v cheapag`. Set `BIGMODEL_API_KEY` in the environment before login or starting Codex. The key is never stored in this repository. To load it automatically in new zsh terminals, save it in a user-only local file from the terminal where it is already set:
-
-```zsh
-umask 077
-printf '%s' "$BIGMODEL_API_KEY" > ~/.config/cheapag/bigmodel.key
-chmod 600 ~/.config/cheapag/bigmodel.key
-printf '%s\n' 'export BIGMODEL_API_KEY="$(cat "$HOME/.config/cheapag/bigmodel.key")"' >> ~/.zshrc
-```
-
-The file contains the key, so keep it private and outside any repository. The manual snippet above uses zsh; on Bash, change `~/.zshrc` to `~/.bashrc`. Open a new terminal before starting Codex. If the official plugin or a manual `cheapag` MCP entry is installed, remove those first to avoid two servers with the same name:
-
-```zsh
-codex plugin remove cheapag@cheap-agent
-codex mcp remove cheapag
-```
-
-Missing-entry errors are harmless. Install the fork's plugin from its branch, then start Codex in a project:
-
-```zsh
-codex plugin marketplace add Zzmes/cheap-ag --ref feat/bigmodel-worker
+```bash
+codex plugin marketplace upgrade cheap-agent-glm
+codex plugin remove cheapag@cheap-agent-glm
 codex plugin add cheapag@cheap-agent-glm
-cd ~/path/to/project
-codex
 ```
 
-Trust the Cheap Agent hooks when prompted. In each project, run `$cheapag:allow` once **inside Codex**. After that, ask Codex for changes normally. The plugin's MCP server, skills and hooks all run the linked local `cheapag` binary. `ping` checks that Cheap Agent and OpenCode start; an actual GLM task is needed to confirm the BigModel API accepts the key and model.
+Restart Codex after refreshing. The distribution source is `feat/bigmodel-worker`. Git package preparation follows [npm's prepare lifecycle](https://docs.npmjs.com/cli/v11/using-npm/scripts/).
 
-On Windows PowerShell, set `BIGMODEL_API_KEY` for your user without putting the key in a command, repo file, or shell history:
-
-```powershell
-$secret = Read-Host 'BigModel standard API key' -AsSecureString
-$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
-try {
-  $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-  [Environment]::SetEnvironmentVariable('BIGMODEL_API_KEY', $key, 'User')
-  $env:BIGMODEL_API_KEY = $key
-} finally {
-  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
-  Remove-Variable key, secret -ErrorAction SilentlyContinue
-}
-```
-
-Then, from this checkout:
-
-```powershell
-npm ci --ignore-scripts
-npm run build
-node .\dist\index.js login --provider bigmodel --model glm-5.3-flash
-$entry = (Resolve-Path .\dist\index.js).Path
-codex mcp add cheapag -- node $entry codex
-```
-
-In `~/.codex/config.toml` (on Windows, `$HOME\.codex\config.toml`), add this line under the `[mcp_servers.cheapag]` section created by `codex mcp add`:
-
-```toml
-env_vars = ["BIGMODEL_API_KEY"]
-```
-
-`--model` is optional and accepts another BigModel model ID your standard API key can use, such as `glm-4.5-air`. The selected provider and model go in your user-level Cheap Agent config; the API key stays in the environment. Restart Codex after setting the user environment variable. In each project, run `node <absolute path to this checkout's dist/index.js> allow` in a terminal to approve sending that project's code to BigModel. Then ask Codex to delegate a task and use Cheap Agent's `ping` MCP tool to check the connection. For a real API check during setup, run `node .\dist\index.js login` interactively, choose **Zhipu BigModel**, and enter the model ID; that path makes one small model request.
-
-### Claude Code
-
-**Easiest:** paste this into Claude Code. It asks what you want, then gives you one command to run.
-
-```text
-Set up Cheap Agent (npm: cheap-agent) for me.
-1. Ask me: which provider (OpenRouter recommended, DeepSeek, OpenCode Go, Command Code, or direct Zhipu BigModel), and which
-   models (balanced is the default; cheapest, strongest, or my own provider/model).
-2. Check that node is 20+ and the claude CLI is installed.
-3. If I picked my own model, save {"models":{"implement":"<model>"}} in
-   ~/.config/cheapag/config.json, keeping what else is there.
-4. Give me the command to run in my terminal: npx cheap-agent login --preset <my choice,
-   or custom>, and which number to pick for my provider (1 OpenCode Go, 2 OpenRouter,
-   3 DeepSeek, 4 Command Code, 5 Zhipu BigModel). I run it and provide the key locally. Never ask for my key.
-5. When I say done, check `claude mcp list` shows cheapag, then tell me to run
-   /cheapag:allow in a new Claude Code session in my project.
-```
-
-**Or do it yourself:**
-
-```bash
-npx cheap-agent
-```
-
-Pick a provider (**OpenRouter** if unsure), press Enter for the recommended models, paste your API key. It checks the key works, then adds itself to Claude Code for every project.
-
-Then, in each project, once:
-
-```
-/cheapag:allow
-```
-
-**That's it.** Ask Claude for changes like you always do.
-
-### Codex
-
-Log in (say no when it offers to add itself to Claude Code, if you don't use Claude):
-
-```bash
-npx cheap-agent
-```
-
-Add the plugin:
-
-```bash
-codex plugin marketplace add muaaz9329/cheap-ag
-```
-
-```bash
-codex plugin add cheapag@cheap-agent
-```
-
-Start `codex` in your project and trust the 3 cheapag hooks when it asks. Then, in each project, once:
-
-```
-$cheapag:allow
-```
-
-**That's it.** Ask Codex for changes like you always do.
-
-**You need:**
-- [Claude Code](https://claude.com/claude-code) or [Codex](https://developers.openai.com/codex)
-- [Node.js](https://nodejs.org) 20+
-- An API key with a few dollars on it from [OpenRouter](https://openrouter.ai/keys), [DeepSeek](https://platform.deepseek.com), [OpenCode Go](https://opencode.ai), [Command Code](https://commandcode.ai), or [Zhipu BigModel](https://open.bigmodel.cn/) (Command Code needs a plan with API access; OpenCode Go needs Regions set to Global in its console for the DeepSeek models; BigModel uses a standard API key through `BIGMODEL_API_KEY`)
-
-A few dollars lasts hundreds of tasks. It runs on macOS, Linux and Windows.
-
-**Windows:** you also need [Git for Windows](https://git-scm.com/downloads/win) (Git Bash). Known so far:
-- The very first job can take about 2 minutes while the cheap model's engine (OpenCode) sets itself up. Later jobs start in seconds.
-- If that engine crashes mid-session, Cheap Agent starts a new one, but the crashed copy can stay running (`opencode.exe` in Task Manager) until you end it or restart.
-- The cheap model can't read your dependency folders (like `node_modules`) inside its copy of the project. Your tests still run normally.
 
 ---
 

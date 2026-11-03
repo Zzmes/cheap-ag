@@ -1,10 +1,20 @@
 {
   "mcpServers": {
     "cheapag": {
-      "command": "cheapag",
-      "args": ["codex"],
-      "env_vars": ["BIGMODEL_API_KEY"],
-      "omit_tools_from": ["code_mode", "deferred"]
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker",
+        "cheapag",
+        "codex"
+      ],
+      "omit_tools_from": [
+        "code_mode",
+        "deferred"
+      ],
+      "env_vars": [
+        "BIGMODEL_API_KEY"
+      ]
     }
   }
 }

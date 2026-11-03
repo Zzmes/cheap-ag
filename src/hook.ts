@@ -129,7 +129,7 @@ const colour = (text: string) => (process.env.CLAUDE_CODE_ENTRYPOINT === "claude
 
 /** The newer version to announce, or undefined when the installed version is current (or the check is opted out). */
 async function newerVersion(): Promise<string | undefined> {
-  if (process.env.CHEAPAG_NO_UPDATE_CHECK === "1") return;
+  if (INSTALLED.includes("-glm.") || process.env.CHEAPAG_NO_UPDATE_CHECK === "1") return;
   const latest = await latestVersion();
   if (!latest || !majorOrMinorNewer(latest, INSTALLED)) return;
   return latest;

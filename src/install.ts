@@ -2,6 +2,7 @@ import { cpSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, wri
 import { createRequire } from "node:module";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NPX_ARGS, NPX_COMMAND } from "./distribution.js";
 import { userConfigFile } from "./config.js";
 import { normalisePath, runCli, which } from "./platform.js";
 
@@ -14,7 +15,7 @@ import { normalisePath, runCli, which } from "./platform.js";
 
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 const PLUGIN_SRC = fileURLToPath(new URL("../plugin", import.meta.url));
-const NPX = `npx -y cheap-agent@${version}`;
+const NPX = NPX_COMMAND;
 export const MARKETPLACE = "cheapag";
 
 /** Where setup keeps the launcher and the generated marketplace: next to the user config. */
@@ -28,7 +29,7 @@ export const installPaths = () => {
  * runs on every platform: it gates the guard hook (exit 0 unless the repo opted in), then runs this install when it is
  * still there, else the pinned npx.
  */
-const launcherScript = (entry: string) => `// cheapag: gates the guard hook, runs this install, else the fallback npx -y cheap-agent@${version}
+const launcherScript = (entry: string) => `// cheapag: gates the guard hook, runs this install, else the fork GitHub package
 "use strict";
 const { execFileSync, spawnSync } = require("node:child_process");
 const { existsSync } = require("node:fs");
@@ -48,7 +49,7 @@ if (existsSync(entry)) {
   process.argv[1] = entry;
   import(pathToFileURL(entry).href);
 } else {
-  const r = spawnSync("npx", ["-y", "cheap-agent@${version}", ...process.argv.slice(2)], { stdio: "inherit", shell: process.platform === "win32" });
+  const r = spawnSync("npx", [...${JSON.stringify(NPX_ARGS)}, ...process.argv.slice(2)], { stdio: "inherit", shell: process.platform === "win32" });
   process.exit(r.status ?? 1);
 }
 `;

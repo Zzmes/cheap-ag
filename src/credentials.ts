@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-/** Existing providers use OpenCode's auth store; direct BigModel reads a key from the environment. */
+/** Existing providers use OpenCode's auth store; BigModel uses an environment override or private user file. */
 
 /** Providers in detection order; `label` is what `cheapag login` shows. */
 export const PROVIDERS = [
@@ -15,6 +15,19 @@ export const PROVIDERS = [
 
 export type Provider = { provider: (typeof PROVIDERS)[number]["id"]; via: "login" | "env" };
 export const BIGMODEL_KEY_ENV = "BIGMODEL_API_KEY";
+export const bigmodelKeyFile = () => join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "cheapag", "bigmodel.key");
+
+export function readBigmodelKey(): string | undefined {
+  if (process.env[BIGMODEL_KEY_ENV]?.trim()) return process.env[BIGMODEL_KEY_ENV]!.trim();
+  try { return readFileSync(bigmodelKeyFile(), "utf8").trim() || undefined; } catch { return undefined; }
+}
+
+export function saveBigmodelKey(key: string) {
+  const dir = join(bigmodelKeyFile(), "..");
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  writeFileSync(bigmodelKeyFile(), key, { mode: 0o600 });
+  chmodSync(bigmodelKeyFile(), 0o600);
+}
 
 export const LOGIN_COMMAND = "cheapag login";
 export const NO_PROVIDER = `FAIL reason: no worker provider; run ${LOGIN_COMMAND}`;
@@ -43,7 +56,7 @@ export function detectProvider(): Provider | undefined {
   try {
     const file = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "cheapag", "config.json");
     const config = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
-    if (config.worker_provider === "bigmodel") return { provider: "bigmodel", via: "env" };
+    if (config.worker_provider === "bigmodel") return { provider: "bigmodel", via: process.env[BIGMODEL_KEY_ENV]?.trim() ? "env" : "login" };
   } catch { /* loadConfig reports a damaged config to jobs */ }
   const [first] = savedProviders();
   return first && { provider: first, via: "login" };
@@ -51,7 +64,9 @@ export function detectProvider(): Provider | undefined {
 
 /** Strips key-shaped strings (OpenRouter's sk-or-v1-…, DeepSeek/OpenAI-style sk-…) from anything that leaves the process. */
 export function redact(text: string) {
-  const key = process.env[BIGMODEL_KEY_ENV];
-  const safe = key && key.length >= 8 ? text.replaceAll(key, "[redacted]") : text;
+  const keys = [process.env[BIGMODEL_KEY_ENV]?.trim()];
+  try { keys.push(readFileSync(bigmodelKeyFile(), "utf8").trim()); } catch {}
+  let safe = text;
+  for (const key of keys) if (key && key.length >= 8) safe = safe.replaceAll(key, "[redacted]");
   return safe.replace(/\bsk-[A-Za-z0-9_-]{16,}/g, "[redacted]");
 }

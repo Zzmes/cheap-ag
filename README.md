@@ -42,6 +42,12 @@ This checkout supports the direct BigModel OpenAI-compatible API at `https://ope
 From a checkout of `Zzmes/cheap-ag` on branch `feat/bigmodel-worker` at `~/mcp/cheap-ag`, run this once:
 
 ```zsh
+bash scripts/setup-codex-bigmodel.sh
+```
+
+It securely prompts for the key if needed, saves it in a user-only file, builds and links this checkout, removes the old `cheapag` entries, and installs the fork's plugin from this local checkout. Open a new terminal afterward. The equivalent manual steps are below.
+
+```zsh
 npm ci --ignore-scripts
 npm run build
 npm link

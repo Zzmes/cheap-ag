@@ -2,7 +2,6 @@ import { cpSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, wri
 import { createRequire } from "node:module";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { NPX_ARGS, NPX_COMMAND } from "./distribution.js";
 import { userConfigFile } from "./config.js";
 import { normalisePath, runCli, which } from "./platform.js";
 
@@ -10,12 +9,11 @@ import { normalisePath, runCli, which } from "./platform.js";
  * The Claude Code plugin (hooks and slash commands), installed by setup (ticket 31). It is generated from this package's
  * own plugin/ so it always matches the installed version, needs no public marketplace, and leaves out .mcp.json (setup
  * registers the server at user scope). Its hooks run on every tool call once a job has run, so they call a launcher that
- * starts this install with node (~0.1 s) instead of npx (~0.4 s), falling back to npx if this install is gone.
+ * starts this install with node (~0.1 s) instead of npx (~0.4 s), reporting a missing install without downloading inside the host.
  */
 
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 const PLUGIN_SRC = fileURLToPath(new URL("../plugin", import.meta.url));
-const NPX = NPX_COMMAND;
 export const MARKETPLACE = "cheapag";
 
 /** Where setup keeps the launcher and the generated marketplace: next to the user config. */
@@ -27,9 +25,9 @@ export const installPaths = () => {
 /**
  * The launcher every hook and command runs as `node <launcher> <args>`. Windows has no /bin/sh, so one CommonJS file
  * runs on every platform: it gates the guard hook (exit 0 unless the repo opted in), then runs this install when it is
- * still there, else the pinned npx.
+ * still there, else asks the user to reinstall in a normal terminal.
  */
-const launcherScript = (entry: string) => `// cheapag: gates the guard hook, runs this install, else the fork GitHub package
+const launcherScript = (entry: string) => `// cheapag: gates the guard hook, runs this install, reports a missing runtime without npm cache writes
 "use strict";
 const { execFileSync, spawnSync } = require("node:child_process");
 const { existsSync } = require("node:fs");
@@ -49,8 +47,8 @@ if (existsSync(entry)) {
   process.argv[1] = entry;
   import(pathToFileURL(entry).href);
 } else {
-  const r = spawnSync("npx", [...${JSON.stringify(NPX_ARGS)}, ...process.argv.slice(2)], { stdio: "inherit", shell: process.platform === "win32" });
-  process.exit(r.status ?? 1);
+  console.error("Cheap Agent runtime is missing. Reinstall the fork in a normal terminal; see its README.");
+  process.exit(1);
 }
 `;
 
@@ -68,7 +66,6 @@ export function writePlugin(entry: string, _node: string, platform: NodeJS.Platf
   rmSync(join(plugin, ".mcp.json"), { force: true });
   const skills = readdirSync(join(plugin, "skills")).map((s) => join(plugin, "skills", s, "SKILL.md"));
   for (const f of skills) writeFileSync(f, readFileSync(f, "utf8")
-    .replaceAll(NPX, ref)
     .replaceAll("Bash(cheapag ", `Bash(${ref} `)
     .replaceAll("!`cheapag ", `!\`${ref} `));
   const hooksFile = join(plugin, "hooks", "hooks.json");
@@ -81,7 +78,7 @@ export function writePlugin(entry: string, _node: string, platform: NodeJS.Platf
     json.hooks.SessionStart[0].hooks[0].command = command("context");
     writeFileSync(hooksFile, JSON.stringify(json, null, 2) + "\n");
   } else {
-    writeFileSync(hooksFile, readFileSync(hooksFile, "utf8").replaceAll(NPX, ref).replaceAll("cheapag hook", `${ref} hook`));
+    writeFileSync(hooksFile, readFileSync(hooksFile, "utf8").replaceAll("cheapag hook", `${ref} hook`));
   }
   mkdirSync(join(marketplace, ".claude-plugin"), { recursive: true });
   writeFileSync(join(marketplace, ".claude-plugin", "marketplace.json"), JSON.stringify({

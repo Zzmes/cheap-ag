@@ -2,9 +2,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join, sep } from "node:path";
+import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { NPX_ARGS } from "./distribution.js";
 import { Writable } from "node:stream";
 import { loadConfig, userConfigFile } from "./config.js";
 import { BIGMODEL_KEY_ENV, bigmodelKeyFile, readBigmodelKey, saveBigmodelKey, detectProvider, LOGIN_COMMAND as LOGIN, PROVIDERS, providerLabel as label, redact, savedProviders, type Provider } from "./credentials.js";
@@ -336,10 +335,10 @@ function finish(out: (line?: string) => void, plugin: boolean) {
     : "\nThe server is set up; add the plugin with the commands above, then open a new Claude Code session.");
 }
 
-/** How Claude Code should start this installed package: npx when run from npx's cache, else this exact file. */
+/** How Claude Code starts this installed package without a package-manager invocation. */
 function serverCommand() {
   const entry = realpathSync(process.argv[1]);
-  return entry.split(sep).includes("_npx") ? ["npx", ...NPX_ARGS] : [stableNode(), entry];
+  return [stableNode(), entry];
 }
 
 // double quotes on Windows: cmd and PowerShell don't treat single quotes as quoting

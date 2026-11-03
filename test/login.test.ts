@@ -238,7 +238,8 @@ tty("the plugin is generated from the package: hooks and commands call the launc
   // the launcher runs this install, falling back to the pinned npm version
   const launcher = readFileSync(r.launcher, "utf8");
   expect(launcher).toContain(JSON.stringify(serverEntry));
-  expect(launcher).toContain("git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker");
+  expect(launcher).toContain("Reinstall the fork in a normal terminal");
+  expect(launcher).not.toContain('spawnSync("npx"');
   expect(launcher).toContain('process.argv[2] === "hook" && process.argv[3] === "guard"');
   expect(launcher).toContain("pathToFileURL");
   const context = await promisify(execFile)(process.execPath, [r.launcher, "hook", "context"], { encoding: "utf8" });

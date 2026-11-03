@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { NPX_ARGS, NPX_COMMAND } from "../src/distribution.js";
+const CLI = "cheapag";
 
 /** The Claude Code plugin's files (spec: Packaging): valid, pinned to this package's version, with the expected skills. */
 const repo = join(import.meta.dirname, "..");
@@ -32,13 +32,17 @@ test("fork marketplace lists the plugin from this repo, and the manifests agree 
   });
 });
 
-test("the fork plugin runs the fork GitHub package without a linked checkout or exported key", () => {
-  expect(json(join(plugin, ".mcp.json"))).toEqual({ mcpServers: { cheapag: { command: "npx", args: NPX_ARGS } } });
+test("the fork plugin uses the installed CLI without npx or npm cache writes", () => {
+  expect(json(join(plugin, ".mcp.json"))).toEqual({ mcpServers: { cheapag: { command: CLI } } });
   expect(json(join(plugin, "codex.mcp.json"))).toEqual({
-    mcpServers: { cheapag: { command: "npx", args: [...NPX_ARGS, "codex"], env_vars: ["BIGMODEL_API_KEY"], omit_tools_from: ["code_mode", "deferred"] } },
+    mcpServers: { cheapag: { command: CLI, args: ["codex"], env_vars: ["BIGMODEL_API_KEY"], omit_tools_from: ["code_mode", "deferred"] } },
   });
   const files = readdirSync(plugin, { recursive: true, withFileTypes: true }).filter((f) => f.isFile());
-  for (const file of files) expect(readFileSync(join(file.parentPath, file.name), "utf8")).not.toContain("cheap-agent@1.3.2");
+  for (const file of files) {
+    const text = readFileSync(join(file.parentPath, file.name), "utf8");
+    expect(text).not.toContain("cheap-agent@1.3.2");
+    if (file.name !== "README.md") expect(text).not.toMatch(/\bnpx\b/);
+  }
 });
 
 test("skills: plan-writing for Claude; status, and user-only allow, clean and hook wrapping the CLI", () => {
@@ -49,7 +53,7 @@ test("skills: plan-writing for Claude; status, and user-only allow, clean and ho
   for (const rule of ["files:", "done-when:", "dont:", "needs:", "deps:", "## 1 ", "Size", "Grouping", "Packages", "never the whole suite"]) expect(plan.body).toContain(rule);
   for (const rule of ["Trust OK", "After a FAIL"]) expect(plan.body).not.toContain(rule); // the rules live in the server instructions only
 
-  const pin = NPX_COMMAND;
+  const pin = CLI;
   const status = skill("status");
   expect(status.front["disable-model-invocation"]).toBeUndefined();
   expect(status.body).toContain(`!\`${pin} status\``);
@@ -80,17 +84,17 @@ test("the guard hooks: PreToolUse on every tool behind a shell test that skips n
   const hooks = json(join(plugin, "hooks", "hooks.json"));
   expect(Object.keys(hooks.hooks).sort()).toEqual(["PostToolUse", "PreToolUse", "SessionStart"]);
   // SessionStart puts the delegation rule into the session's context (benchmark run 2: MCP instructions alone were not enough)
-  expect(hooks.hooks.SessionStart).toEqual([{ hooks: [{ type: "command", command: `CHEAPAG_NO_UPDATE_CHECK=1 ${NPX_COMMAND} hook context`, timeout: expect.any(Number) }] }]);
+  expect(hooks.hooks.SessionStart).toEqual([{ hooks: [{ type: "command", command: `CHEAPAG_NO_UPDATE_CHECK=1 ${CLI} hook context`, timeout: expect.any(Number) }] }]);
   // ticket 29: every tool, since the take-over budget counts Reads and Bash too
   expect(hooks.hooks.PreToolUse).toEqual([{ matcher: "*", hooks: [{ type: "command", command: expect.any(String), timeout: expect.any(Number) }] }]);
   const { command } = hooks.hooks.PreToolUse[0].hooks[0];
-  expect(command).toBe(`r=$(git rev-parse --show-toplevel 2>/dev/null) && { [ -f "$r/.cheapag/hook.json" ] || [ -f "$r/.cheapag/hook/takeover" ]; } && ${NPX_COMMAND} hook guard; exit 0`);
-  expect(hooks.hooks.PostToolUse).toEqual([{ matcher: "mcp__.*cheapag__(delegate|jobs|reply|land)", hooks: [{ type: "command", command: `${NPX_COMMAND} hook result; exit 0`, timeout: expect.any(Number) }] }]);
+  expect(command).toBe(`r=$(git rev-parse --show-toplevel 2>/dev/null) && { [ -f "$r/.cheapag/hook.json" ] || [ -f "$r/.cheapag/hook/takeover" ]; } && ${CLI} hook guard; exit 0`);
+  expect(hooks.hooks.PostToolUse).toEqual([{ matcher: "mcp__.*cheapag__(delegate|jobs|reply|land)", hooks: [{ type: "command", command: `${CLI} hook result; exit 0`, timeout: expect.any(Number) }] }]);
 });
 
 test("the Codex plugin loads the shared hooks file, since Codex ignores any other hooks path", () => {
   expect(json(join(plugin, ".codex-plugin", "plugin.json")).hooks).toBe("./hooks/hooks.json");
-  expect(json(join(plugin, "hooks", "hooks.json")).hooks.SessionStart).toEqual([{ hooks: [{ type: "command", command: `CHEAPAG_NO_UPDATE_CHECK=1 ${NPX_COMMAND} hook context`, timeout: expect.any(Number) }] }]);
+  expect(json(join(plugin, "hooks", "hooks.json")).hooks.SessionStart).toEqual([{ hooks: [{ type: "command", command: `CHEAPAG_NO_UPDATE_CHECK=1 ${CLI} hook context`, timeout: expect.any(Number) }] }]);
 });
 
 test("the progress mod is Claude-only: named by the Claude manifest, never in the hooks file Codex reads", () => {

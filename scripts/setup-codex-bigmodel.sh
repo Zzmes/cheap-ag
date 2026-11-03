@@ -3,7 +3,8 @@ set -euo pipefail
 for tool in node npm codex; do
   command -v "$tool" >/dev/null || { printf 'Install %s first.\n' "$tool" >&2; exit 1; }
 done
-npx -y --package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker cheapag login --provider bigmodel --model "${1:-glm-5.3}"
+npm install -g "git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker"
+cheapag login --provider bigmodel --model "${1:-glm-5.3}"
 codex plugin remove cheapag@cheap-agent >/dev/null 2>&1 || true
 codex mcp remove cheapag >/dev/null 2>&1 || true
 codex plugin remove cheapag@cheap-agent-glm >/dev/null 2>&1 || true

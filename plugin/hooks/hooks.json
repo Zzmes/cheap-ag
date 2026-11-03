@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "r=$(git rev-parse --show-toplevel 2>/dev/null) && { [ -f \"$r/.cheapag/hook.json\" ] || [ -f \"$r/.cheapag/hook/takeover\" ]; } && npx -y --package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker cheapag hook guard; exit 0",
+            "command": "r=$(git rev-parse --show-toplevel 2>/dev/null) && { [ -f \"$r/.cheapag/hook.json\" ] || [ -f \"$r/.cheapag/hook/takeover\" ]; } && cheapag hook guard; exit 0",
             "timeout": 60
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y --package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker cheapag hook result; exit 0",
+            "command": "cheapag hook result; exit 0",
             "timeout": 60
           }
         ]
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CHEAPAG_NO_UPDATE_CHECK=1 npx -y --package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker cheapag hook context",
+            "command": "CHEAPAG_NO_UPDATE_CHECK=1 cheapag hook context",
             "timeout": 60
           }
         ]

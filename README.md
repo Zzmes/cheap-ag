@@ -36,16 +36,17 @@ Uses the direct standard API / resource-pack endpoint `https://open.bigmodel.cn/
 Run in a normal terminal, once per machine:
 
 ```bash
-npx -y --package=git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker cheapag login --provider bigmodel --model glm-5.3
+npm install -g "git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker"
+cheapag login --provider bigmodel --model glm-5.3
 codex plugin marketplace add Zzmes/cheap-ag --ref feat/bigmodel-worker
 codex plugin add cheapag@cheap-agent-glm
 ```
 
-Login prompts for the key with hidden input and saves it in `~/.config/cheapag/bigmodel.key` (mode 600; respects `XDG_CONFIG_HOME`). It reuses the key saved by the previous installer. No export, shell startup edits, source checkout, manual build or `npm link` is needed. `BIGMODEL_API_KEY` overrides the saved key; login saves that value for future sessions. Use a GLM model ID accepted by your account with `--model`. Never put your key in chat, a project file or a command argument. The credential file is plain text restricted to your OS user, not an encrypted vault.
+Login prompts for the key with hidden input and saves it in `~/.config/cheapag/bigmodel.key` (mode 600; respects `XDG_CONFIG_HOME`). It reuses the key saved by the previous installer. No export, shell startup edits, source checkout, manual build or `npm link` is needed. The global npm bin directory must be on the PATH used to launch Codex (`command -v cheapag` checks this). `BIGMODEL_API_KEY` overrides the saved key; login saves that value for future sessions. Use a GLM model ID accepted by your account with `--model`. Never put your key in chat, a project file or a command argument. The credential file is plain text restricted to your OS user, not an encrypted vault.
 
 Start `codex` in a project, trust the Cheap Agent hooks, invoke `$cheapag:allow` once for that Git repository, then ask for changes normally. Authorizing a parent repository does not authorize a separate nested repository. The plugin cannot override Codex's own permission checks. Login with explicit flags configures credentials and models without a model API request; an actual research/delegate task verifies the API.
 
-The plugin, hooks and skills run the fork's GitHub package. npm builds TypeScript automatically when installing the Git package. The first invocation needs network and can take longer; later invocations use npm's cache. `npx cheap-agent` still downloads the upstream npm package without this fork's changes.
+The plugin, hooks and skills run the globally installed `cheapag` directly. npm downloads dependencies and builds TypeScript once during installation. Runtime hooks, authorization and MCP startup do not invoke npm/npx or write npm caches. npm's cache may be read-only inside Codex; this is why a runtime npx command is unsuitable here. Run installation and updates in a normal terminal. `npx cheap-agent` still downloads the upstream npm package without this fork's changes.
 
 ### Migrate the previous local installation
 
@@ -60,6 +61,7 @@ This reuses your key and replaces the local marketplace with a Git marketplace. 
 ### Update
 
 ```bash
+npm install -g "git+https://github.com/Zzmes/cheap-ag.git#feat/bigmodel-worker"
 codex plugin marketplace upgrade cheap-agent-glm
 codex plugin remove cheapag@cheap-agent-glm
 codex plugin add cheapag@cheap-agent-glm

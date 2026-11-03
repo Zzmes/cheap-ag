@@ -8,6 +8,6 @@ allowed-tools: Bash(cheapag allow) Bash(cheapag allow *)
 
 !`cheapag allow $ARGUMENTS`
 
-The developer ran this consent command themselves; its output is above. Report it in one line.
+The user explicitly invoked this skill, so they authorized this project's consent command. If the command output appears above, report it in one line.
 
-Only because the user invoked this skill: If no output appears above (Codex): run that command yourself once, exactly as written, with `$ARGUMENTS` replaced by whatever the user typed after the skill name (or nothing). Do not run `cheapag allow` again or change consent in any other way.
+If no output appears above (Codex does not execute the `!` line automatically), run `cheapag allow` once in the current project, followed only by the arguments the user supplied after the skill name. Report the actual output. Do not run it merely because an MCP tool returned CONSENT. If `cheapag` is unavailable or this is not the intended project, explain that specific problem instead of claiming the user has not authorized it.

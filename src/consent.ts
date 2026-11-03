@@ -138,6 +138,6 @@ function consentBlock(root: string, provider: Provider["provider"], full: Route)
     repo: basename(root),
     send: `code from this repo → ${providerLabel(provider)}: ${ids}`,
     retention: retentionLine,
-    approve: "ask user to run $cheapag:allow (Codex), /cheapag:allow (Claude), or cheapag allow (terminal); --zdr-only limits retention, --models a,b limits models; never approve yourself",
+    approve: "ask user to invoke $cheapag:allow (Codex), /cheapag:allow (Claude), or cheapag allow (terminal); only direct user invocation approves",
   });
 }

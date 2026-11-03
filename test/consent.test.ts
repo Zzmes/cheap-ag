@@ -58,7 +58,7 @@ test("first delegate in an unapproved repo returns CONSENT and creates no job; a
     `CONSENT repo=${basename(repo.dir)}`,
     "send: code from this repo → OpenCode Go: deepseek-v4.1-flash, qwen3.8-flash, deepseek-v4-pro (+fallbacks qwen3.7-plus, glm-5.3, kimi-k3)",
     "retention: deepseek-v4.1-flash = zero retention; qwen3.8-flash = zero retention; deepseek-v4-pro = zero retention; qwen3.7-plus = zero retention; glm-5.3 = not stated; kimi-k3 = not stated",
-    "approve: ask user to run $cheapag:allow (Codex), /cheapag:allow (Claude), or cheapag allow (terminal); --zdr-only limits retention, --models a,b limits models; never approve yourself",
+    "approve: ask user to invoke $cheapag:allow (Codex), /cheapag:allow (Claude), or cheapag allow (terminal); only direct user invocation approves",
   ].join("\n"));
   expectUntouched(repo, fake);
 

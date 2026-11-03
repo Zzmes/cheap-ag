@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { loadConfig, userConfigFile } from "./config.js";
-import { detectProvider, LOGIN_COMMAND as LOGIN, PROVIDERS, providerLabel as label, redact, savedProviders, type Provider } from "./credentials.js";
+import { BIGMODEL_KEY_ENV, detectProvider, LOGIN_COMMAND as LOGIN, PROVIDERS, providerLabel as label, redact, savedProviders, type Provider } from "./credentials.js";
 import { ensureOpencode, opencodeBinary, stopOpencode } from "./opencode.js";
 import { runCli } from "./platform.js";
 import { installPlugin, stableNode } from "./install.js";
@@ -13,8 +13,8 @@ import { fullRoute, modelName, presetOf, PRESET_NAMES, PRESETS, type ModelsConfi
 import { runSession } from "./worker.js";
 
 /**
- * `cheapag login`: the only setup (ADR-0004). Picks a provider, lets the bundled OpenCode's own login take the key
- * (hidden input, saved in OpenCode's store; Cheap Agent never sees it), live-checks it, then offers to register
+ * `cheapag login`: the setup (ADR-0004). Existing providers use OpenCode's hidden key prompt and auth store;
+ * BigModel reads BIGMODEL_API_KEY from the environment. Interactive login live-checks the selected provider and offers to register
  * the server with Claude Code at user scope and install the plugin (ticket 31). `npx cheap-agent` in a terminal runs it too.
  */
 
@@ -27,6 +27,13 @@ const isChoice = (s: string): s is Choice => (CHOICES as readonly string[]).incl
 
 export async function login(args: string[] = [], { setup = false }: { setup?: boolean } = {}): Promise<number> {
   const out = (line = "") => process.stdout.write(redact(line) + "\n");
+  if (args[0] === "--provider" || args.includes("--model")) {
+    if (args[0] !== "--provider" || args[1] !== "bigmodel" || (args.length !== 2 && !(args.length === 4 && args[2] === "--model"))) {
+      out("✗ usage: cheapag login --provider bigmodel [--model <GLM-model-ID>]");
+      return 1;
+    }
+    return loginBigmodel(args[3] ?? "glm-5.3-flash", out);
+  }
   const flag = args.length === 2 && args[0] === "--preset" ? args[1] : undefined;
   if (args.length && flag === undefined) {
     out(`✗ usage: cheapag login [--preset ${CHOICES.join("|")}]`);
@@ -52,6 +59,14 @@ export async function login(args: string[] = [], { setup = false }: { setup?: bo
       out(`✗ ${LOGIN} needs an interactive terminal (the key is typed into a hidden prompt)`);
       return 1;
     }
+    if (saved.provider === "bigmodel") {
+      if (flag && flag !== "custom") {
+        out(`✗ BigModel uses a model ID; run ${LOGIN} --provider bigmodel --model <GLM-model-ID>`);
+        return 1;
+      }
+      out(`BigModel remains selected; run ${LOGIN} --provider bigmodel --model <GLM-model-ID> to change its model`);
+      return 0;
+    }
     // no terminal to type a key into: only the worker models are set, for the provider already logged in (scripts, the benchmark)
     const choice = flag ?? currentPreset(saved.provider) ?? "balanced";
     if (!flag) out(`No terminal to ask in: worker models stay ${choice} for ${label(saved.provider)}; pass --preset to choose`);
@@ -69,6 +84,10 @@ export async function login(args: string[] = [], { setup = false }: { setup?: bo
   if (!picked) {
     out(`✗ "${answer}" is not one of 1-${PROVIDERS.length}; nothing changed`);
     return 1;
+  }
+  if (picked.id === "bigmodel") {
+    const model = await ask("BigModel model ID [glm-5.3-flash]: ");
+    return loginBigmodel(model || "glm-5.3-flash", out, true);
   }
   const preset = currentPreset(picked.id) ?? "balanced";
   let choice = flag ?? "";
@@ -131,11 +150,13 @@ function currentPreset(provider: Provider["provider"]) {
 function savePreset(provider: Provider["provider"], choice: Choice, out: (line?: string) => void) {
   const file = userConfigFile();
   if (choice === "custom") {
+    if (provider !== "bigmodel") clearBigmodelSelection();
     out(`Worker models: custom, nothing written; set "models" in a repo's cheapag.json, or in ${file} for every repo`);
     return true;
   }
   try {
-    const config = { ...readUser(), models: PRESETS[provider][choice] };
+    const config: Record<string, unknown> = { ...readUser(), models: PRESETS[provider][choice] };
+    if (provider !== "bigmodel") delete config.worker_provider;
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, JSON.stringify(config, null, 2) + "\n");
   } catch (err) {
@@ -144,6 +165,41 @@ function savePreset(provider: Provider["provider"], choice: Choice, out: (line?:
   }
   out(`✓ Worker models: ${choice} (implement ${PRESETS[provider][choice].implement}), saved in ${file}`);
   return true;
+}
+
+function clearBigmodelSelection() {
+  const config = readUser();
+  if (config.worker_provider !== "bigmodel") return;
+  delete config.worker_provider;
+  writeFileSync(userConfigFile(), JSON.stringify(config, null, 2) + "\n");
+}
+
+async function loginBigmodel(model: string, out: (line?: string) => void, interactive = false): Promise<number> {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model)) {
+    out(`✗ invalid BigModel model ID; use letters, digits, dots, underscores or hyphens`);
+    return 1;
+  }
+  if (!process.env[BIGMODEL_KEY_ENV]?.trim()) {
+    out(`✗ ${BIGMODEL_KEY_ENV} is not set; set it in this terminal, then run ${LOGIN} --provider bigmodel --model ${model}`);
+    return 1;
+  }
+  const file = userConfigFile();
+  try {
+    const selected = `bigmodel/${model}`;
+    const config = { ...readUser(), worker_provider: "bigmodel", models: { implement: selected, research: selected, escalation: selected, fallback: [] } };
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify(config, null, 2) + "\n");
+  } catch (err) {
+    out(`✗ ${file}: ${(err as Error).message}; BigModel not selected`);
+    return 1;
+  }
+  out(`✓ Worker provider: Zhipu BigModel (direct API); model ${model}, saved in ${file}; key read from ${BIGMODEL_KEY_ENV}`);
+  if (!interactive) return 0;
+  const check = await liveCheck({ provider: "bigmodel", via: "env" });
+  out(check.ok ? `✓ ${check.line}` : `✗ ${check.line}`);
+  if (!check.ok) return 1;
+  await register(out);
+  return 0;
 }
 
 /** One tiny real call to the implement model the user's config now picks, through the bundled OpenCode, in a throwaway directory. */

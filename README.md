@@ -33,20 +33,57 @@
 
 Works in Claude Code and Codex. One login covers both.
 
+### Zhipu BigModel standard API (source checkout)
+
+This checkout supports the direct BigModel OpenAI-compatible API at `https://open.bigmodel.cn/api/paas/v4`. Use a **standard API / resource-pack key**, not a Coding Plan key. Until this patch is published, run the local build rather than `npx cheap-agent@1.3.2`.
+
+On Windows PowerShell, set `BIGMODEL_API_KEY` for your user without putting the key in a command, repo file, or shell history:
+
+```powershell
+$secret = Read-Host 'BigModel standard API key' -AsSecureString
+$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+try {
+  $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+  [Environment]::SetEnvironmentVariable('BIGMODEL_API_KEY', $key, 'User')
+  $env:BIGMODEL_API_KEY = $key
+} finally {
+  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+  Remove-Variable key, secret -ErrorAction SilentlyContinue
+}
+```
+
+Then, from this checkout:
+
+```powershell
+npm ci --ignore-scripts
+npm run build
+node .\dist\index.js login --provider bigmodel --model glm-5.3-flash
+$entry = (Resolve-Path .\dist\index.js).Path
+codex mcp add cheapag -- node $entry codex
+```
+
+In `~/.codex/config.toml` (on Windows, `$HOME\.codex\config.toml`), add this line under the `[mcp_servers.cheapag]` section created by `codex mcp add`:
+
+```toml
+env_vars = ["BIGMODEL_API_KEY"]
+```
+
+`--model` is optional and accepts another BigModel model ID your standard API key can use, such as `glm-4.5-air`. The selected provider and model go in your user-level Cheap Agent config; the API key stays in the environment. Restart Codex after setting the user environment variable. In each project, run `node <absolute path to this checkout's dist/index.js> allow` in a terminal to approve sending that project's code to BigModel. Then ask Codex to delegate a task and use Cheap Agent's `ping` MCP tool to check the connection. For a real API check during setup, run `node .\dist\index.js login` interactively, choose **Zhipu BigModel**, and enter the model ID; that path makes one small model request.
+
 ### Claude Code
 
 **Easiest:** paste this into Claude Code. It asks what you want, then gives you one command to run.
 
 ```text
 Set up Cheap Agent (npm: cheap-agent) for me.
-1. Ask me: which provider (OpenRouter recommended, DeepSeek, OpenCode Go or Command Code), and which
+1. Ask me: which provider (OpenRouter recommended, DeepSeek, OpenCode Go, Command Code, or direct Zhipu BigModel), and which
    models (balanced is the default; cheapest, strongest, or my own provider/model).
 2. Check that node is 20+ and the claude CLI is installed.
 3. If I picked my own model, save {"models":{"implement":"<model>"}} in
    ~/.config/cheapag/config.json, keeping what else is there.
 4. Give me the command to run in my terminal: npx cheap-agent login --preset <my choice,
    or custom>, and which number to pick for my provider (1 OpenCode Go, 2 OpenRouter,
-   3 DeepSeek, 4 Command Code). I run it and type my API key there. Never ask for my key.
+   3 DeepSeek, 4 Command Code, 5 Zhipu BigModel). I run it and provide the key locally. Never ask for my key.
 5. When I say done, check `claude mcp list` shows cheapag, then tell me to run
    /cheapag:allow in a new Claude Code session in my project.
 ```
@@ -96,7 +133,7 @@ $cheapag:allow
 **You need:**
 - [Claude Code](https://claude.com/claude-code) or [Codex](https://developers.openai.com/codex)
 - [Node.js](https://nodejs.org) 20+
-- An API key with a few dollars on it from [OpenRouter](https://openrouter.ai/keys), [DeepSeek](https://platform.deepseek.com), [OpenCode Go](https://opencode.ai) or [Command Code](https://commandcode.ai) (Command Code needs a plan with API access; OpenCode Go needs Regions set to Global in its console for the DeepSeek models)
+- An API key with a few dollars on it from [OpenRouter](https://openrouter.ai/keys), [DeepSeek](https://platform.deepseek.com), [OpenCode Go](https://opencode.ai), [Command Code](https://commandcode.ai), or [Zhipu BigModel](https://open.bigmodel.cn/) (Command Code needs a plan with API access; OpenCode Go needs Regions set to Global in its console for the DeepSeek models; BigModel uses a standard API key through `BIGMODEL_API_KEY`)
 
 A few dollars lasts hundreds of tasks. It runs on macOS, Linux and Windows.
 

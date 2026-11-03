@@ -5,6 +5,7 @@ import type { ModelsConfig } from "./routing.js";
 
 /** Optional settings: the repo's `cheapag.json` overrides the user's `~/.config/cheapag/config.json` (spec E4). */
 export type Config = {
+  worker_provider?: "bigmodel";
   test_cmd?: string; integration_cmd?: string; link_dirs: string[]; allow_commands: string[]; limits: Limits; retention: Retention;
   models: ModelsConfig; escalation_skip_at: number; guard_lines: number; hard_tasks: HardTasks; takeover: TakeOver;
 };
@@ -61,7 +62,8 @@ function read(file: string): Partial<Omit<Config, "limits" | "retention">> & { l
     throw new Error(`${file} is not valid JSON: ${(err as Error).message}`);
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error(`${file} must hold a JSON object`);
-  const { test_cmd, integration_cmd, link_dirs, allow_commands, limits, retention, models, escalation_skip_at, guard_lines, hard_tasks, takeover } = value as Record<string, unknown>;
+  const { worker_provider, test_cmd, integration_cmd, link_dirs, allow_commands, limits, retention, models, escalation_skip_at, guard_lines, hard_tasks, takeover } = value as Record<string, unknown>;
+  if (worker_provider !== undefined && worker_provider !== "bigmodel") throw new Error(`${file}: worker_provider must be bigmodel`);
   if (limits !== undefined && (typeof limits !== "object" || limits === null || Array.isArray(limits))) throw new Error(`${file}: limits must be an object`);
   const caps: Partial<Limits> = {};
   // E4's self_fix_attempts is not read yet
@@ -116,6 +118,7 @@ function read(file: string): Partial<Omit<Config, "limits" | "retention">> & { l
     });
   }
   return {
+    ...(worker_provider !== undefined && { worker_provider: "bigmodel" as const }),
     ...(test_cmd !== undefined && { test_cmd }),
     ...(integration_cmd != null && { integration_cmd }),
     ...(dirs && { link_dirs: dirs }),

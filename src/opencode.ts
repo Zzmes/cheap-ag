@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch } from "node:os";
 import { dirname, join } from "node:path";
-import type { Provider } from "./credentials.js";
+import { BIGMODEL_KEY_ENV, type Provider } from "./credentials.js";
 import { baselinePermission } from "./permissions.js";
 import { gitBash, killProcessGroup, opencodePlatform } from "./platform.js";
 import { fullRoute, modelName, routeModels, type Route } from "./routing.js";
@@ -136,6 +136,11 @@ const COMMAND_CODE = {
   name: "Command Code",
   options: { baseURL: "https://api.commandcode.ai/provider/v1" },
 };
+const BIGMODEL = {
+  npm: "@ai-sdk/openai-compatible",
+  name: "Zhipu BigModel",
+  options: { baseURL: "https://open.bigmodel.cn/api/paas/v4", apiKey: `{env:${BIGMODEL_KEY_ENV}}` },
+};
 
 /** The generated opencode.json for the route's models: their options (e.g. OpenRouter routing) and the small model. */
 function opencodeConfig(provider: Provider, route: Route) {
@@ -146,6 +151,11 @@ function opencodeConfig(provider: Provider, route: Route) {
   if (provider.provider === "commandcode") {
     Object.assign(providerConfig, COMMAND_CODE, {
       models: Object.fromEntries(routeModels(route).map((m) => [m.id, { name: m.id, ...(models[m.id] ?? {}) }])),
+    });
+  }
+  if (provider.provider === "bigmodel") {
+    Object.assign(providerConfig, BIGMODEL, {
+      models: Object.fromEntries(routeModels(route).map((m) => [m.id, { name: m.id }])),
     });
   }
   const config = {
@@ -193,6 +203,9 @@ export async function runningOpencode(): Promise<Opencode | undefined> {
 }
 
 export function ensureOpencode(provider: Provider, projectDir = process.cwd(), route?: Route): Promise<Opencode> {
+  if (provider.provider === "bigmodel" && !process.env[BIGMODEL_KEY_ENV]?.trim()) {
+    return Promise.reject(new Error(`${BIGMODEL_KEY_ENV} is not set; set it in the environment that launches Cheap Agent (and restart Codex)`));
+  }
   const config = opencodeConfig(provider, route ?? fullRoute(provider.provider));
   if (started && route && booted !== config) {
     // a reboot would kill every live session: refuse it while any job or research call holds the server

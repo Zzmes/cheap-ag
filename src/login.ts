@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { loadConfig, userConfigFile } from "./config.js";
-import { BIGMODEL_KEY_ENV, bigmodelKeyFile, readBigmodelKey, saveBigmodelKey, detectProvider, LOGIN_COMMAND as LOGIN, PROVIDERS, providerLabel as label, redact, savedProviders, type Provider } from "./credentials.js";
+import { BIGMODEL_KEY_ENV, opencodeAuthFile, readBigmodelKey, saveBigmodelKey, detectProvider, LOGIN_COMMAND as LOGIN, PROVIDERS, providerLabel as label, redact, savedProviders, type Provider } from "./credentials.js";
 import { ensureOpencode, opencodeBinary, stopOpencode } from "./opencode.js";
 import { runCli } from "./platform.js";
 import { installPlugin, stableNode } from "./install.js";
@@ -15,7 +15,7 @@ import { runSession } from "./worker.js";
 
 /**
  * `cheapag login`: the setup (ADR-0004). Existing providers use OpenCode's hidden key prompt and auth store;
- * BigModel uses a hidden key prompt and a private user credential file. Interactive login live-checks the selected provider and offers to register
+ * BigModel uses a hidden prompt and the same OpenCode credential store. Interactive login live-checks the selected provider and offers to register
  * the server with Claude Code at user scope and install the plugin (ticket 31). `npx cheap-agent` in a terminal runs it too.
  */
 
@@ -33,7 +33,7 @@ export async function login(args: string[] = [], { setup = false }: { setup?: bo
       out("✗ usage: cheapag login --provider bigmodel [--model <GLM-model-ID>]");
       return 1;
     }
-    return loginBigmodel(args[3] ?? "glm-5.3-flash", out);
+    return loginBigmodel(args[3] ?? (process.stdin.isTTY ? await chooseBigmodel(out) : currentBigmodel()), out);
   }
   const flag = args.length === 2 && args[0] === "--preset" ? args[1] : undefined;
   if (args.length && flag === undefined) {
@@ -87,8 +87,7 @@ export async function login(args: string[] = [], { setup = false }: { setup?: bo
     return 1;
   }
   if (picked.id === "bigmodel") {
-    const model = await ask("BigModel model ID [glm-5.3-flash]: ");
-    return loginBigmodel(model || "glm-5.3-flash", out, true);
+    return loginBigmodel(await chooseBigmodel(out), out, true);
   }
   const preset = currentPreset(picked.id) ?? "balanced";
   let choice = flag ?? "";
@@ -175,6 +174,26 @@ function clearBigmodelSelection() {
   writeFileSync(userConfigFile(), JSON.stringify(config, null, 2) + "\n");
 }
 
+/** Keep a saved GLM choice when rerunning login; these examples do not assert account availability. */
+function currentBigmodel(): string {
+  try {
+    const model = (readUser().models as ModelsConfig | undefined)?.implement;
+    if (model?.startsWith("bigmodel/")) return model.slice("bigmodel/".length);
+  } catch {}
+  return "glm-5.3";
+}
+
+async function chooseBigmodel(out: (line?: string) => void): Promise<string> {
+  const current = currentBigmodel();
+  out("GLM models (availability depends on your BigModel account):");
+  out("  1) glm-5.3");
+  out("  2) glm-5.3-flash");
+  out("  3) custom model ID");
+  const picked = await ask(`Model [1-3 or model ID, Enter = ${current}]: `);
+  if (picked === "3") return ask("GLM model ID: ");
+  return ({ "1": "glm-5.3", "2": "glm-5.3-flash" } as Record<string, string>)[picked] ?? (picked || current);
+}
+
 async function loginBigmodel(model: string, out: (line?: string) => void, interactive = false): Promise<number> {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model)) {
     out(`✗ invalid BigModel model ID; use letters, digits, dots, underscores or hyphens`);
@@ -207,7 +226,7 @@ async function loginBigmodel(model: string, out: (line?: string) => void, intera
     out(`✗ ${file}: ${(err as Error).message}; BigModel not selected`);
     return 1;
   }
-  out(`✓ Worker provider: Zhipu BigModel (direct API); model ${model}, saved in ${file}; key saved privately in ${bigmodelKeyFile()}`);
+  out(`✓ Worker provider: Zhipu BigModel (direct API); model ${model}, saved in ${file}; key saved in OpenCode credential store ${opencodeAuthFile()}`);
   if (!interactive) return 0;
   const check = await liveCheck({ provider: "bigmodel", via: "env" });
   out(check.ok ? `✓ ${check.line}` : `✗ ${check.line}`);

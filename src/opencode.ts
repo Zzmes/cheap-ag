@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch } from "node:os";
 import { dirname, join } from "node:path";
-import { BIGMODEL_KEY_ENV, readBigmodelKey, type Provider } from "./credentials.js";
+import { BIGMODEL_KEY_ENV, bigmodelKeyOverride, readBigmodelKey, type Provider } from "./credentials.js";
 import { baselinePermission } from "./permissions.js";
 import { gitBash, killProcessGroup, opencodePlatform } from "./platform.js";
 import { fullRoute, modelName, routeModels, type Route } from "./routing.js";
@@ -139,11 +139,11 @@ const COMMAND_CODE = {
 const BIGMODEL = {
   npm: "@ai-sdk/openai-compatible",
   name: "Zhipu BigModel",
-  options: { baseURL: "https://open.bigmodel.cn/api/paas/v4", apiKey: `{env:${BIGMODEL_KEY_ENV}}` },
+  options: { baseURL: "https://open.bigmodel.cn/api/paas/v4" },
 };
 
 /** The generated opencode.json for the route's models: their options (e.g. OpenRouter routing) and the small model. */
-function opencodeConfig(provider: Provider, route: Route) {
+export function opencodeConfig(provider: Provider, route: Route) {
   // the key itself stays in OpenCode's own credential store; the config never names one
   const models = Object.fromEntries(routeModels(route).filter((m) => m.options).map((m) => [m.id, { options: m.options }]));
   const providerConfig: Record<string, unknown> = Object.keys(models).length ? { models } : {};
@@ -155,6 +155,7 @@ function opencodeConfig(provider: Provider, route: Route) {
   }
   if (provider.provider === "bigmodel") {
     Object.assign(providerConfig, BIGMODEL, {
+      options: { ...BIGMODEL.options, ...(bigmodelKeyOverride() ? { apiKey: `{env:${BIGMODEL_KEY_ENV}}` } : {}) },
       models: Object.fromEntries(routeModels(route).map((m) => [m.id, { name: m.id }])),
     });
   }
@@ -207,7 +208,7 @@ export function ensureOpencode(provider: Provider, projectDir = process.cwd(), r
   if (provider.provider === "bigmodel" && !key) {
     return Promise.reject(new Error(`${BIGMODEL_KEY_ENV} is not set; set it in the environment that launches Cheap Agent (and restart Codex)`));
   }
-  if (key) process.env[BIGMODEL_KEY_ENV] = key;
+
   const config = opencodeConfig(provider, route ?? fullRoute(provider.provider));
   if (started && route && booted !== config) {
     // a reboot would kill every live session: refuse it while any job or research call holds the server
@@ -216,7 +217,7 @@ export function ensureOpencode(provider: Provider, projectDir = process.cwd(), r
     stopOpencode();
   }
   if (!started) booted = config;
-  started ??= boot(projectDir, config).catch((err) => {
+  started ??= boot(projectDir, config, provider.provider === "bigmodel" ? bigmodelKeyOverride() : undefined).catch((err) => {
     stopOpencode();
     started = undefined;
     throw err;
@@ -224,12 +225,12 @@ export function ensureOpencode(provider: Provider, projectDir = process.cwd(), r
   return started;
 }
 
-async function boot(projectDir: string, config: string): Promise<Opencode> {
+async function boot(projectDir: string, config: string, keyOverride?: string): Promise<Opencode> {
   const configDir = join(projectDir, ".cheapag", "opencode");
   writeConfigDir(configDir, config);
   const external = process.env.CHEAPAG_OPENCODE_URL;
   const password = (external && process.env.CHEAPAG_OPENCODE_PASSWORD) || randomBytes(24).toString("base64url");
-  const url = external || (await spawnServer(configDir, password));
+  const url = external || (await spawnServer(configDir, password, keyOverride));
 
   const res = await fetch(new URL("/global/health", url), {
     headers: { authorization: `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}` },
@@ -243,7 +244,7 @@ async function boot(projectDir: string, config: string): Promise<Opencode> {
   return { url, password, version };
 }
 
-function spawnServer(configDir: string, password: string) {
+function spawnServer(configDir: string, password: string, keyOverride?: string) {
   // on Windows point the worker at Git Bash, so it runs and parses its commands as bash, like the rest of cheapag
   const bash = process.platform === "win32" ? gitBash() : undefined;
   return new Promise<string>((resolve, reject) => {
@@ -255,6 +256,7 @@ function spawnServer(configDir: string, password: string) {
       stdio: ["ignore", "pipe", "pipe"],
       env: {
         ...process.env,
+        ...(keyOverride ? { [BIGMODEL_KEY_ENV]: keyOverride } : {}),
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_DIR: configDir,
         OPENCODE_DISABLE_PROJECT_CONFIG: "1",

@@ -2,7 +2,7 @@
 
 Gives Claude the Cheap Agent MCP server (`delegate`, `research`, `reply`, `jobs`, `land`), the plan-writing skill, `/cheapag:status`, and the user-only commands `/cheapag:allow`, `/cheapag:clean` and `/cheapag:hook`.
 
-This fork's plugin calls the globally installed `cheapag` executable for MCP, skills and hooks. Install the fork from GitHub with npm in a normal terminal; no source checkout or npm link is required. Runtime commands do not download packages or write npm caches. Its Git marketplace is `cheap-agent-glm`. See the root README for installation and migration.
+This fork's plugin calls the globally installed `cheapag` executable for MCP, skills and hooks. Install the fork from GitHub with npm in a normal terminal; no source checkout or npm link is required. Runtime commands do not download packages or write npm caches. Its Git marketplace is `cheap-agent-glm`. BigModel credentials share OpenCode's auth.json store. Run `cheapag login --provider bigmodel` for a model menu or pass `--model <ID>` directly. See the root README for installation and migration.
 
 ## Worker models
 

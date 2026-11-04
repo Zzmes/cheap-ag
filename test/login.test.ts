@@ -109,8 +109,19 @@ tty("BigModel login prompts without echoing the key and saves a private credenti
   expect(r.exit).toBe("EXIT 0");
   expect(r.output).not.toContain(KEY);
   expect(r.config.worker_provider).toBe("bigmodel");
-  const credential = join(dirname(r.launcher), "..", "bigmodel.key");
-  expect(readFileSync(credential, "utf8")).toBe(KEY);
+  expect(r.saved).toContain("bigmodel");
+}, slow(90_000));
+
+tty("BigModel model menu accepts a numbered selection and a custom id", async () => {
+  for (const [pick, model] of [["2", "glm-5.3-flash"], ["glm-custom-test", "glm-custom-test"]]) {
+    const r = await runLogin({ claude: "absent", args: ["--provider", "bigmodel"], steps: [
+      { expect: "Model", send: `${pick}\r` },
+      { expect: "BigModelAPIKey", send: `${KEY}\r` },
+    ] });
+    expect(r.exit).toBe("EXIT 0");
+    expect(r.config.models.implement).toBe(`bigmodel/${model}`);
+    expect(r.output).not.toContain(KEY);
+  }
 }, slow(90_000));
 
 tty("login saves the key through the bundled OpenCode, live-checks it, and registers at user scope on yes", async () => {

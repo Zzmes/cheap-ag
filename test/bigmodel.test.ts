@@ -95,23 +95,23 @@ test("BigModel uses the normal per-repository consent gate", () => {
   expect(consentGate(dir, "bigmodel")).toMatchObject({ block: expect.stringContaining("no allowed model") });
 });
 
-test("bundled OpenCode sends a custom BigModel model and the environment key to an OpenAI-compatible endpoint", async () => {
+test("bundled OpenCode sends a custom BigModel model and the saved auth-store key to an OpenAI-compatible endpoint", async () => {
   const llm = await startFakeLlm();
   onTestFinished(llm.close);
-  const { home, env } = hermeticHome();
+  const { home, env } = hermeticHome({ bigmodel: KEY });
   const configDir = join(home, "oc");
   mkdirSync(configDir, { recursive: true });
   writeFileSync(join(configDir, "opencode.json"), JSON.stringify({
     small_model: "bigmodel/glm-5.3-flash",
     provider: { bigmodel: {
       npm: "@ai-sdk/openai-compatible", name: "Zhipu BigModel",
-      options: { baseURL: llm.url, apiKey: "{env:BIGMODEL_API_KEY}" },
+      options: { baseURL: llm.url },
       models: { "glm-5.3-flash": { name: "glm-5.3-flash" } },
     } },
   }));
   const oc = spawn(opencodeBinary(), ["serve", "--hostname", "127.0.0.1", "--port", "0"], {
     detached: true,
-    env: { ...env, BIGMODEL_API_KEY: KEY, OPENCODE_SERVER_PASSWORD: "t", OPENCODE_CONFIG_DIR: configDir, OPENCODE_DISABLE_PROJECT_CONFIG: "1" },
+    env: { ...env, OPENCODE_SERVER_PASSWORD: "t", OPENCODE_CONFIG_DIR: configDir, OPENCODE_DISABLE_PROJECT_CONFIG: "1" },
   });
   oc.stderr.resume();
   const kill = () => killProcessGroup(oc.pid, "SIGKILL");

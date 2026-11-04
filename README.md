@@ -27,6 +27,7 @@
 
 <p align="center">
   ⭐ Star it, and click <strong>Watch → Custom → Releases</strong> to hear when new versions ship.
+  <br>💬 Questions, ideas and setups: <a href="https://www.reddit.com/r/CheapAgent/">r/CheapAgent</a>
 </p>
 
 ## Install (BigModel fork)
@@ -177,7 +178,7 @@ Because your plan isn't.
 
 ## Contributing
 
-PRs are welcome, and I'm more than happy to merge them. Setup, where things live, and how to add a provider are in [CONTRIBUTING.md](./CONTRIBUTING.md).
+PRs are welcome, and I'm more than happy to merge them. Setup, where things live, and how to add a provider are in [CONTRIBUTING.md](./CONTRIBUTING.md). For ideas and questions, come say hi on [r/CheapAgent](https://www.reddit.com/r/CheapAgent/).
 
 ## Update or remove
 

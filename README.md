@@ -46,7 +46,7 @@ Login prompts for the key with hidden input and saves it as the `bigmodel` provi
 
 Start `codex` in a project, trust the Cheap Agent hooks, invoke `$cheapag:allow` once for that Git repository, then ask for changes normally. Authorizing a parent repository does not authorize a separate nested repository. The plugin cannot override Codex's own permission checks. Login with explicit flags configures credentials and models without a model API request; an actual research/delegate task verifies the API.
 
-The plugin, hooks and skills run the globally installed `cheapag` directly. npm downloads dependencies and builds TypeScript once during installation. Runtime hooks, authorization and MCP startup do not invoke npm/npx or write npm caches. npm's cache may be read-only inside Codex; this is why a runtime npx command is unsuitable here. Run installation and updates in a normal terminal. `npx cheap-agent` still downloads the upstream npm package without this fork's changes.
+The plugin, hooks and skills run the globally installed `cheapag` directly. The Git branch includes compiled JavaScript in `dist/`; npm installs runtime dependencies without compiling TypeScript or requiring tsc. Runtime hooks, authorization and MCP startup do not invoke npm/npx or write npm caches. npm's cache may be read-only inside Codex; this is why a runtime npx command is unsuitable here. Run installation and updates in a normal terminal. `npx cheap-agent` still downloads the upstream npm package without this fork's changes.
 
 ### Migrate the previous local installation
 
@@ -67,7 +67,7 @@ codex plugin remove cheapag@cheap-agent-glm
 codex plugin add cheapag@cheap-agent-glm
 ```
 
-Restart Codex after refreshing. The distribution source is `feat/bigmodel-worker`. Git package preparation follows [npm's prepare lifecycle](https://docs.npmjs.com/cli/v11/using-npm/scripts/).
+Restart Codex after refreshing. The distribution source is `feat/bigmodel-worker`. Contributors: run `npm ci`, `npm run compile` and `npm run typecheck`; commit source and regenerated `dist/` together. This distribution deliberately has no install-time build lifecycle.
 
 
 ---

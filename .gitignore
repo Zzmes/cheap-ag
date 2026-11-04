@@ -2,8 +2,9 @@
 node_modules/
 .pnpm-store/
 
-# Build output
-dist/
+# Generated dist/ is tracked for compiler-free Git installations.
+# Compile source changes before committing.
+# Other build output
 build/
 *.tsbuildinfo
 

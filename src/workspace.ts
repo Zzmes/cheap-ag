@@ -15,13 +15,27 @@ export function git(cwd: string, args: string[], env?: Record<string, string>) {
   return execFileSync("git", [...GIT_ARGS, ...args], { cwd, stdio: "pipe", env: env && { ...process.env, ...env }, maxBuffer: 256 * 1024 * 1024 }).toString();
 }
 
-/** The repository root containing `cwd`; throws when it is not a git repository. */
+export class RepositoryError extends Error {
+  constructor(message: string, readonly reason: "not-repository" | "git-failed") { super(message); }
+}
+
+export function repositoryError(cwd: string, error: unknown): RepositoryError {
+  const err = error as NodeJS.ErrnoException & { stderr?: Buffer | string; status?: number };
+  const detail = err.stderr?.toString().trim() || err.message || "unknown Git failure";
+  if (/not a git repository|must be run in a work tree/i.test(detail)) {
+    return new RepositoryError(`${cwd} is not inside a git repository`, "not-repository");
+  }
+  const code = err.code ?? err.status;
+  return new RepositoryError(`Git repository check failed in ${cwd}${code !== undefined ? ` (${code})` : ""}: ${detail}`, "git-failed");
+}
+
+/** Find the root while preserving Git failures instead of misreporting every failure as a missing repo. */
 export function projectRoot(cwd: string) {
   try {
     // resolved: git prints forward slashes on Windows (C:/x/y); path.* gives the platform's own separators
     return resolve(git(cwd, ["rev-parse", "--show-toplevel"]).trim());
-  } catch {
-    throw new Error(`${cwd} is not inside a git repository`);
+  } catch (error) {
+    throw repositoryError(cwd, error);
   }
 }
 

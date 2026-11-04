@@ -8,7 +8,7 @@ import { blockedFor, records } from "./jobs.js";
 import { isAlive } from "./platform.js";
 import { renderJob } from "./report.js";
 import { spendWindows } from "./routing.js";
-import { projectRoot } from "./workspace.js";
+import { projectRoot, RepositoryError } from "./workspace.js";
 const { version } = createRequire(import.meta.url)("../package.json");
 const RECENT = 5;
 /**
@@ -27,8 +27,10 @@ export function status(args) {
     try {
         root = projectRoot(process.cwd());
     }
-    catch {
-        out("repo: not a git repository (no jobs or consent here)");
+    catch (err) {
+        out(err instanceof RepositoryError && err.reason === "not-repository"
+            ? "repo: not a git repository (no jobs or consent here)"
+            : `repo: ${err.message}; repository status unavailable`);
     }
     if (root) {
         const consent = readConsent(root);
